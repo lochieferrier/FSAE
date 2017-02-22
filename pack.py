@@ -14,11 +14,11 @@ import math
 # 0-1000 Pa difference operating range
 
 
-mdot = Variable("mdot",np.linspace(1e-3,1e-2,100),"kg/s","flow rate in")
+mdot = Variable("mdot","kg/s","flow rate in")
 S_inlet = Variable("S_inlet",0.2523*0.401550,"m^2","Cross sectional area of inlet")
 
 S_T = Variable("S_T",0.0202,"m")
-S_L = Variable("S_L",0.0202,"m")
+S_L = Variable("S_L",0.01749,"m")
 S_D = Variable("S_D",0.0202,"m")
 D = Variable("D",0.0184,"m")
 delta_p = Variable("delta_p","Pa","total pressure difference across pack")
@@ -31,16 +31,25 @@ V_max = Variable("V_max","m/s")
 f = Variable("f","-","friction factor")
 A = Variable("A","m","gap between cells (wall to wall)")
 mu = Variable("mu",1.983e-5,"Pa*s")
+Nu_D = Variable("Nu_D","-")
+C_1 = Variable("C_1",0.35*(1.1549)**(1/5),"-","Coefficient in nusselt equation")
+C_2 = Variable("C_2",0.975,"-","Coefficient to reduce nusselt to below 20 case, with N_L=12")
+Pr = Variable("Pr",0.713,"-","-","Prandtl number in freestream for air at 20C") #http://www.engineeringtoolbox.com/air-properties-d_156.html
+
+# NOT SURE WHAT THIS SHOULD BE
+Pr_s = Variable("Pr_s",0.713,"-","Prandtl number on surface")
 
 with gpkit.SignomialsEnabled():
-	constraints = [f >=1542.963*Re_Dmax**(-0.1678948),
+	constraints = [Nu_D == C_2*C_1*Re_Dmax*(Pr**(0.36))*((Pr/Pr_s)**(1/4)),
+				   f >=1542.963*Re_Dmax**(-0.1678948),
 				   Re_Dmax == V_max*rho*D/mu,
 				   V == mdot/(S_inlet*rho),
 				   A <= S_T - D,
 				   V_max >= S_T*V/(A),
-				   delta_p >= N_L*chi*((rho*V_max**2)/2)*f]
+				   delta_p >= N_L*chi*((rho*V_max**2)/2)*f,
+				   delta_p <= ]
 
-objective = delta_p
+objective = 1/Nu_D
 m = Model(objective,constraints)
 sol = m.solve(verbosity=0)
 print sol(delta_p)
@@ -49,6 +58,8 @@ print sol.table()
 if sol(Re_Dmax).any() >= 1e6:
 	print "REYNOLDS TOO HIGH, INVALID ASSUMPTION ON CHI"
 
+print "Re_Dmax"
+print sol(Re_Dmax)
 plt.scatter(sol(mdot), sol(delta_p))
 plt.xlabel("mdot (kg/s)")
 plt.ylabel("delta_p or backpressure (Pa)")

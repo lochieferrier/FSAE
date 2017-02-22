@@ -1,0 +1,5 @@
+Not sure what they mean by Prandtl number at the surface,
+is that just for the gas or a combo of the gas and battery
+properties? confused.
+
+I got the geometry wrong last time, S_L != S_T
